@@ -1,0 +1,106 @@
+@font-face{
+font-family:"Avenir LT W01 85 Heavy";
+src:url("http://fast.fonts.com/d/7147ec3a-8ff8-4ec9-8c5c-bd1571dc6ae6.woff?d44f19a684109620e484167faf90e8184d62129325cfbe41724e083f90b5b7a6d6475ac910b8e9b20771ff96da0baf3476c38db02dbd1cda501561fafa8e7c802a13f5a323119d7dcdc72c72bb669e71670a16f0e89f8c5cd8c619bf5e14f40f6e0554fada7c017159d8fbcae6f0de61652b003cd436d9b7f63eb24f57badb88d1fdac1e1c1436bbcfb780a300032932189c5a519ab0dc031a78ce2ff25ea1851a6b4f8e3fd69eed596ea0561e172eb9ce256e67969b7a5770c68daf93953cad537910634b036da4f13ccef97c6c43322af32f59a6f161684f73665c3526441dbacd3e8f20b4e2ffadf8633dda3d1cf66904b02c74d419c82097f379b8fb8f0277db6974fb52c5651019e379&projectId=3680cf49-2b05-4b8a-af28-fa9e27d2bed0") format('woff');}
+
+body{
+    font-family: verdana,arial,sans-serif;
+    font-size: 0.688em;
+    border: 0;
+    vertical-align: baseline;
+}
+
+#widget{
+    font-family: verdana, arial, sans-serif;
+    background: #ff0000;
+    color: white;
+    background-image: url(sprite_backgrounds.png);
+    background-repeat: repeat-y;
+    float: left;
+    width: 220px;
+    background-position: -1580px 0;
+}
+
+.padding{
+    padding: 0 15px 0 10px;
+}
+
+#header{
+}
+
+#header h2{
+    font-family: 'Avenir LT W01 85 Heavy','AvenirHeavy',arial,sans-serif;
+    font-weight: normal;
+    font-size: 1.818em;
+    margin: 18px 0 5px 0;
+}
+
+#header #count{
+    margin: 0px 0 14px 0;
+}
+
+#header #count{
+}
+
+ul.datasets{
+    margin: 0;
+    padding: 0;
+    list-style-type: none;
+}
+ul.datasets li{
+    clear: both;
+    margin-bottom: 8px;
+}
+
+ul.datasets li a{
+    color: white;
+    text-decoration: none;
+    background: url(sprite_bullets_small.png) no-repeat 0 -2997px;
+    padding-left: 15px;
+    display: inline-block;
+    line-height: 1.545em;
+    font-weight: 700;
+
+}
+
+ul.datasets li a:hover{
+    text-decoration: underline;
+}
+
+.crease_holder {
+    background: url(sprite_backgrounds.png) -2000px 61px;
+    width: 100%;
+    height: 63px;
+    float: left;
+}
+
+.crease_holder .crease_outer {
+    background: url(sprite_buttons.png) no-repeat -2000px -100px;
+    width: 63px;
+    height: 63px;
+    float: right;
+    line-height: 0;
+    overflow: hidden;
+    display: block;
+}
+
+.crease_holder .crease .haslink {
+    background: url(sprite_buttons.png) no-repeat -2000px 0;
+    width: 63px;
+    height: 63px;
+    line-height: 0;
+    overflow: hidden;
+}
+
+.crease .haslink:hover{
+    background:url(sprite_buttons.png) no-repeat -3000px 0;
+}
+
+
+.crease_holder .crease a {
+    display: block;
+    width: 63px;
+    height: 63px;
+    text-indent: -9999px;
+    direction: ltr;
+}
+
