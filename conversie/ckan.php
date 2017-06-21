@@ -11,9 +11,10 @@
       var $themas;
       var $categorien;
            
-      function CKAN($key = CKAN_KEY){
-          $this->url = CKAN_URL;
+      function CKAN($key = CKAN_KEY, $url = CKAN_URL, $data_url = DATA_URL){
           $this->key = $key;
+          $this->url = $url;
+          $this->dataUrl = $data_url;
           
           $this->themas = Array(          
             "zorg-welzijn" => "Zorg & Welzijn",
@@ -62,7 +63,7 @@
       }
       
       function getDatasets(){
-        $this->names = json_decode(file_get_contents(CKAN_URL ."search/dataset?all_fields=1&offset=0&limit=1000"));
+        $this->names = json_decode(file_get_contents($this->url ."search/dataset?all_fields=1&offset=0&limit=1000"));
         foreach($this->names->results as $result){
             $this->datasets[$result->name] = $result;
         }
@@ -75,17 +76,46 @@
         //$this->populateDatasets();
       }
       
+      function getNames(){
+          $result = json_decode(file_get_contents($this->url ."3/action/package_list"));
+          if($result->success == 1){
+            return $result->result;
+          }
+      }
+      
+      function getOrganizations(){
+          $result = json_decode(file_get_contents($this->url ."3/action/organization_list"));
+          if($result->success == 1){
+            return $result->result;
+          }
+      }
+      
+      function getGroups(){
+          $result = json_decode(file_get_contents($this->url ."3/action/group_list"));
+          if($result->success == 1){
+            return $result->result;
+          }
+      }
+      
       function populateDatasets(){
           $this->datasets = Array();
           foreach($this->names as $name){
-              $this->datasets[$name] = json_decode(file_get_contents(CKAN_URL ."rest/dataset/". $name));
+              $this->datasets[$name] = json_decode(file_get_contents($this->url ."rest/dataset/". $name));
           }
+      }
+      
+      function setExists($name){
+          $result = false;
+          foreach($this->datasets as $key => $set){
+              if(strtolower($key) == strtolower($name)) $result = true;
+          }
+          return $result;
       }
       
       function getSearch($q = "", $num = 250){
           $num = intval($num);
           if(!$num > 0) $num = 250;
-          return json_decode(file_get_contents(CKAN_URL ."search/dataset?q=". urlencode($q) ."&all_fields=1&order_by=metadata_modified&offset=0&limit=".$num));
+          return json_decode(file_get_contents($this->url ."search/dataset?q=". urlencode($q) ."&all_fields=1&order_by=metadata_modified&offset=0&limit=".$num));
       }
       
   
@@ -97,14 +127,14 @@
           }
         
         if($extend_to_resources){
-            $csv->addArrayHeader(Array("Thema", "Categorie", "Naam", "Titel", "Beschrijving",  "Tags", "Eigenaar", "Eigenaar e-mail", "Contactpersoon", "Contact e-mail", "Webadres", "Vrijgegeven", "Aangepast", "Tijd vanaf", "Tijd tot", "Tijd detailniveau", "Updatefrequentie", "Licentie", "Dataset url", "Dataset beschrijving", "Bestandsformaat"));
+            $csv->addArrayHeader(Array("Thema", "Categorie", "Naam", "Titel", "Beschrijving",  "Tags", "Eigenaar", "Eigenaar e-mail", "Contactpersoon", "Contact e-mail", "Aangemaakt", "Gewijzigd", "Licentie", "Dataset url", "Dataset beschrijving", "Bestandsformaat"));
         } else {
-            $csv->addArrayHeader(Array("Thema", "Categorie", "Naam", "Titel", "Beschrijving",  "Tags", "Eigenaar", "Eigenaar e-mail", "Contactpersoon", "Contact e-mail", "Webadres", "Vrijgegeven", "Aangepast", "Tijd vanaf", "Tijd tot", "Tijd detailniveau", "Updatefrequentie", "Licentie", "Directe url", "Aantal datasets", "Datasets"));
+            $csv->addArrayHeader(Array("Thema", "Categorie", "Naam", "Titel", "Beschrijving",  "Tags", "Eigenaar", "Eigenaar e-mail", "Contactpersoon", "Contact e-mail", "Aangemaakt", "Gewijzigd", "Licentie", "Directe url", "Aantal datasets", "Datasets"));
         }
 
         foreach($this->datasets as $name => $dataset){
             if($extend_to_resources){
-                foreach($dataset->res_description as $key => $description){
+                foreach($dataset->res_name as $key => $description){
                     $thema = $this->themas[$dataset->groups[0]];
                     $categorie = $this->categorien[$dataset->groups[0]];
                     $item = Array(
@@ -116,15 +146,10 @@
                         implode(" ", $dataset->tags),
                         $dataset->author,
                         $dataset->author_email,
-                        $dataset->extras->contact_name,
-                        $dataset->extras->contact_email,
-                        $dataset->extras->website,
-                        $dataset->extras->publication_date,
+                        $dataset->maintainer,
+                        $dataset->maintainer_email,
+                        $dataset->metadata_created,
                         $dataset->metadata_modified,
-                        $dataset->extras->time_period_from,
-                        $dataset->extras->time_period_to,
-                        $dataset->extras->time_period_detail_level,
-                        $dataset->extras->update_frequency,
                         $dataset->license_id,
                         $dataset->res_url[$key],
                         $description,
@@ -137,12 +162,13 @@
 
                 $thema = $this->themas[$dataset->groups[0]];
                 $categorie = $this->categorien[$dataset->groups[0]];
-                $url = DATA_URL . "?dataset=" . $dataset->name;
+                $url = $this->dataUrl . "?dataset=" . $dataset->name;
                 
                 $count = 0;
                 $sets = "";
                 $splitter = "";
-                foreach($dataset->res_description as $key => $description){
+                //print("<PRE>"); print_r($dataset); exit();
+                foreach($dataset->res_name as $key => $description){
                     $count++;
                     $sets .= $splitter . $description;
                     $splitter = ", ";
@@ -157,15 +183,10 @@
                     implode(" ", $dataset->tags),
                     $dataset->author,
                     $dataset->author_email,
-                    $dataset->extras->contact_name,
-                    $dataset->extras->contact_email,
-                    $dataset->extras->website,
-                    $dataset->extras->publication_date,
+                    $dataset->maintainer,
+                    $dataset->maintainer_email,
+                    $dataset->metadata_created,
                     $dataset->metadata_modified,
-                    $dataset->extras->time_period_from,
-                    $dataset->extras->time_period_to,
-                    $dataset->extras->time_period_detail_level,
-                    $dataset->extras->update_frequency,
                     $dataset->license_id,
                     $url,
                     $count,
@@ -187,10 +208,12 @@
         
         $data = '{"id": "'. $set .'"}'; 
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_show"); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_show"); 
         curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
         curl_setopt($tuCurl, CURLOPT_RETURNTRANSFER, TRUE); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
 
         $tuData = curl_exec($tuCurl); 
         
@@ -214,10 +237,12 @@
     function changeOwner($set, $ownerName, $ownerMail){
         $data = '{"id": "'. $set .'"}'; 
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_show"); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_show"); 
         curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
         curl_setopt($tuCurl, CURLOPT_RETURNTRANSFER, TRUE); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
 
         $tuData = curl_exec($tuCurl); 
         
@@ -238,9 +263,11 @@
         print_r($data);
         
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_update"); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_update"); 
         curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
 
         $tuData = curl_exec($tuCurl); 
         if(!curl_errno($tuCurl)){ 
@@ -256,10 +283,12 @@
     function getSet($set){
         $data = '{"id": "'. $set .'"}'; 
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_show"); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_show"); 
         curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
         curl_setopt($tuCurl, CURLOPT_RETURNTRANSFER, TRUE); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
 
         $tuData = curl_exec($tuCurl); 
         
@@ -274,13 +303,21 @@
     }
     
     function setSet($set){
-        $data = json_encode($set, JSON_HEX_AMP); 
+        //print_r($this->key);
+        //print("<PRE>");
+        //print_r($set);
+        $data = json_encode($set);
+        //print("<HR>");
+        //print_r($data);
+        //print("<HR>");
+        //exit();
         
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_update"); 
-        curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_update"); 
+        curl_setopt($tuCurl, CURLOPT_POSTFIELDS, urlencode($data)); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
-
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
         $tuData = curl_exec($tuCurl); 
         if(!curl_errno($tuCurl)){ 
           $info = curl_getinfo($tuCurl); 
@@ -288,21 +325,26 @@
         } else { 
           echo 'Curl error: ' . curl_error($tuCurl); 
         } 
-        
         curl_close($tuCurl); 
     }
         
     
     function setLastUpdated($set, $time){
         $dataset = $this->getSet($set);
-        
-        foreach($dataset->extras as $key => $extra){
-            if($extra->key == "publication_date"){
-                $dataset->extras[$key]->value = date("d/m/Y", $time);
-            }
-        }
-        $dataset->resources[0]->last_modified = date("Y-m-d\TH:i:s.u", $time);
-        
+        $dataset->metadata_modified = date("Y-m-d\TH:i:s", $time);      
+        $this->setSet($dataset);
+    }
+    
+    function setCreated($set, $time){
+        $dataset = $this->getSet($set);
+        $dataset->metadata_created = date("Y-m-d\TH:i:s", $time);
+        $this->setSet($dataset);
+    }
+    
+    function setTimes($set, $created, $lastupdated){
+        $dataset = $this->getSet($set);
+        $dataset->metadata_created = date("Y-m-d\TH:i:s.000000", $created);
+        $dataset->metadata_modified = date("Y-m-d\TH:i:s.000000", $lastupdated);
         $this->setSet($dataset);
     }
     
@@ -310,7 +352,7 @@
         $dataset = $this->getSet($name);
         
         $dataset->resources[$res_id]->url = $url;
-        $dataset->resources[$res_id]->description = $description;
+        $dataset->resources[$res_id]->name = $description;
         //print("<PRE>"); print_r($dataset); print("</PRE>");
         
         $this->setSet($dataset);    
@@ -331,9 +373,11 @@
     function deleteDataset($set){
         $data = '{"id": "'. $set . '"}'; 
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_delete"); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_delete"); 
         curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
 
         $tuData = curl_exec($tuCurl); 
         if(!curl_errno($tuCurl)){ 
@@ -347,18 +391,70 @@
     }
 
     function createDataset($set){
-        $data = json_encode($set); 
-        //print_r($data);
+        $data = json_encode($set, JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); // JSON_UNESCAPED_UNICODE);
+        $data = str_replace(";","",$data); //(*%FCV(^BR%$^&% is this really needed to work??
         
+        print("<PRE>");
+        print($data);
+        print("</PRE>");
+                
         $tuCurl = curl_init(); 
-        curl_setopt($tuCurl, CURLOPT_URL, CKAN_URL . "3/action/package_create"); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/package_create"); 
         curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
         curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
 
         $tuData = curl_exec($tuCurl); 
         if(!curl_errno($tuCurl)){ 
           $info = curl_getinfo($tuCurl); 
-          echo 'Took ' . $info['total_time'] . ' sec. to create dataset <i>'. $set["name"] .'</i> (' . $info['url'] .')'; 
+          print("<PRE>"); print_r($info); print("</PRE>");
+          //echo 'Took ' . $info['total_time'] . ' sec. to create dataset <i>'. $set["name"] .'</i> (' . $info['url'] .')'; 
+        } else {
+          echo 'Curl error: ' . curl_error($tuCurl); 
+        }
+
+        curl_close($tuCurl); 
+    }
+    
+    function createOrganization($org){
+        $data = json_encode($org, JSON_PRETTY_PRINT | JSON_HEX_AMP); // | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+                
+        $tuCurl = curl_init(); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/organization_create"); 
+        curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
+        curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
+
+        $tuData = curl_exec($tuCurl); 
+        if(!curl_errno($tuCurl)){ 
+          $info = curl_getinfo($tuCurl); 
+          print("<PRE>"); print_r($info); print("</PRE>");
+          //echo 'Took ' . $info['total_time'] . ' sec. to create dataset <i>'. $set["name"] .'</i> (' . $info['url'] .')'; 
+        } else {
+          echo 'Curl error: ' . curl_error($tuCurl); 
+        }
+
+        curl_close($tuCurl); 
+    }
+
+    
+    function createGroup($group){
+        $data = json_encode($group, JSON_PRETTY_PRINT | JSON_HEX_AMP); // | JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
+                
+        $tuCurl = curl_init(); 
+        curl_setopt($tuCurl, CURLOPT_URL, $this->url . "3/action/group_create"); 
+        curl_setopt($tuCurl, CURLOPT_POSTFIELDS, $data); 
+        curl_setopt($tuCurl, CURLOPT_HTTPHEADER, array("Authorization: ". $this->key)); 
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($tuCurl, CURLOPT_SSL_VERIFYPEER, 0);
+
+        $tuData = curl_exec($tuCurl); 
+        if(!curl_errno($tuCurl)){ 
+          $info = curl_getinfo($tuCurl); 
+          print("<PRE>"); print_r($info); print("</PRE>");
+          //echo 'Took ' . $info['total_time'] . ' sec. to create dataset <i>'. $set["name"] .'</i> (' . $info['url'] .')'; 
         } else {
           echo 'Curl error: ' . curl_error($tuCurl); 
         }
@@ -367,7 +463,7 @@
     }
     
     function datasetExists($name){
-        $check = json_decode(file_get_contents(CKAN_URL ."search/dataset?name=". $name));
+        $check = json_decode(file_get_contents($this->url ."search/dataset?name=". $name));
         if($check->count > 0){
             return true;
         } else {
@@ -377,5 +473,4 @@
 
 }
 //CKAN API documentation: http://docs.ckan.org/en/latest/apiv3.html
-
 ?>

@@ -1,6 +1,6 @@
 <?php
   include("ckan.php");
-  $count_niet_meetellen = 64;
+  $count_niet_meetellen = 46;
   
   //error_reporting(0);
   

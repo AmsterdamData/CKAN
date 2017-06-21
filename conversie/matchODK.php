@@ -30,7 +30,7 @@
   foreach($matches as $match){
       print("<tr>");
       print("<td>". $match[2] ."</td>");
-      print("<td>". $match[1] ."</td>");
+      print("<td><a href='https://kaart.amsterdam.nl/datasets/datasets-item". $match[1] ."' target='_blank'>". $match[1] ."</td>");
       print("<td>". matchCKAN($ckan, $match[1]) ."</td>");
       print("</tr>");
   }
